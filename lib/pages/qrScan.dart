@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'MainScan.dart'; 
+import 'MainScan.dart';
+import 'dart:math';
 
 class Scan extends StatefulWidget {
   const Scan({Key? key}) : super(key: key);
@@ -9,75 +10,119 @@ class Scan extends StatefulWidget {
   State<Scan> createState() => _ScanState();
 }
 
-class _ScanState extends State<Scan> {
+class _ScanState extends State<Scan> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _waveAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Initialize animation controller for wave effect
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 5),
+    )..repeat(reverse: true);
+
+    _waveAnimation = Tween<double>(begin: 0, end: 20).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-
-    const Color primaryColor = Color(0xFFFFC107); 
-    const Color backgroundColor = Color(0xFF212121); 
+    // Updated color scheme
+    const Color primaryColor = Color(0xFF0072CE); // New blue color
+    const Color backgroundColor = Color(0xFF121212); // Darker background for contrast
 
     return Scaffold(
       backgroundColor: backgroundColor,
       body: Stack(
         children: [
- 
-          Positioned.fill(
-            child: ClipPath(
-              clipper: WaveClipper(),
-              child: Container(
-                color: primaryColor,
-              ),
-            ),
+          // Animated Wave Background
+          AnimatedBuilder(
+            animation: _waveAnimation,
+            builder: (context, child) {
+              return Positioned.fill(
+                child: ClipPath(
+                  clipper: WaveClipper(_waveAnimation.value),
+                  child: Container(
+                    color: primaryColor,
+                  ),
+                ),
+              );
+            },
           ),
-
           SafeArea(
             child: Column(
               children: [
-                // Center content at the top
+                // Center content at the top with Fade & Slide animation
                 Expanded(
                   child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // QR Code Icon
-                        Icon(
-                          Icons.qr_code_2,
-                          size: 150,
-                          color: backgroundColor,
+                        // Fade & Slide-in Animation for QR Code Icon
+                        AnimatedOpacity(
+                          opacity: 1.0,
+                          duration: Duration(milliseconds: 1500),
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: Offset(0, -0.5),
+                              end: Offset.zero,
+                            ).animate(CurvedAnimation(
+                              parent: _controller,
+                              curve: Curves.easeOut,
+                            )),
+                            child: Icon(
+                              Icons.qr_code_2,
+                              size: 150,
+                              color: Colors.white,
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 20),
 
-                        // Primary Subtitle Text
-                        Text(
-                          'Get Started',
-                          style: GoogleFonts.poppins(
-                            color: backgroundColor,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
+                        // Elegant Title Text with Animation
+                        AnimatedOpacity(
+                          opacity: 1.0,
+                          duration: Duration(milliseconds: 1500),
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: Offset(0, -0.5),
+                              end: Offset.zero,
+                            ).animate(CurvedAnimation(
+                              parent: _controller,
+                              curve: Curves.easeOut,
+                            )),
+                            child: Text(
+                              'NocEvent',
+                              style: GoogleFonts.playfairDisplay(
+                                color: Colors.white,
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.2,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
                           ),
-                          textAlign: TextAlign.center,
                         ),
-                 
                         const SizedBox(height: 15),
-
-  
-                        Text(
-                          'Scan any QR code to unlock offers, \naccess content, and explore more.',
-                          style: GoogleFonts.poppins(
-                            color: Colors.black87,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w400,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
                       ],
                     ),
                   ),
                 ),
 
-                // Button at the bottom center
+                // Button at the bottom with Ripple Effect
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 30.0), 
+                  padding: const EdgeInsets.only(bottom: 30.0),
                   child: SizedBox(
                     width: 200,
                     child: ElevatedButton(
@@ -88,25 +133,27 @@ class _ScanState extends State<Scan> {
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: backgroundColor,
+                        backgroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(25),
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 16),
+                        shadowColor: primaryColor.withOpacity(0.5),
+                        elevation: 10,
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            'Let\'s Start',
-                            style: GoogleFonts.poppins(
+                            'Commencer',
+                            style: GoogleFonts.robotoSlab(
                               fontSize: 18,
                               color: primaryColor,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Icon(
+                          Icon(
                             Icons.arrow_forward,
                             color: primaryColor,
                           ),
@@ -124,20 +171,25 @@ class _ScanState extends State<Scan> {
   }
 }
 
-
+// Wave Clipper with adjustable wave height for animation
 class WaveClipper extends CustomClipper<Path> {
+  final double waveHeight;
+
+  WaveClipper(this.waveHeight);
+
   @override
   Path getClip(Size size) {
     final path = Path();
     path.lineTo(0, size.height * 0.7);
 
-    var firstControlPoint = Offset(size.width / 4, size.height * 0.6);
+    var firstControlPoint = Offset(size.width / 4, size.height * 0.6 + waveHeight);
     var firstEndPoint = Offset(size.width / 2, size.height * 0.7);
+
+    var secondControlPoint = Offset(3 * size.width / 4, size.height * 0.8 - waveHeight);
+    var secondEndPoint = Offset(size.width, size.height * 0.7);
+
     path.quadraticBezierTo(
         firstControlPoint.dx, firstControlPoint.dy, firstEndPoint.dx, firstEndPoint.dy);
-
-    var secondControlPoint = Offset(3 * size.width / 4, size.height * 0.8);
-    var secondEndPoint = Offset(size.width, size.height * 0.7);
     path.quadraticBezierTo(
         secondControlPoint.dx, secondControlPoint.dy, secondEndPoint.dx, secondEndPoint.dy);
 
